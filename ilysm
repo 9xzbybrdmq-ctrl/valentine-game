@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Valentine Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body {
+  margin: 0;
+  font-family: 'Press Start 2P', monospace;
+  background-color: #ff0000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+.hidden { display: none; }
+.arcade-box {
+  background-color: white;
+  border: 8px solid #ff0000;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px #ff0000;
+  width: 600px;
+  z-index: 1;
+  position: relative;
+  text-align: center;
+}
+.level-box {
+  background-color: white;
+  border: 5px solid #ff0000;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  display: inline-block;
+  box-shadow: 0 0 10px #ff0000;
+  font-size: 20px;
+  color: #ff0000;
+  text-shadow: 1px 1px #ff69b4;
+}
+h1,h2,h3 { margin: 10px 0; color: #ff0000; text-shadow: 2px 2px #ff69b4; }
+#options { margin-top: 20px; }
+.option {
+  font-size: 20px;
+  margin: 8px 0;
+  color: #ff0000;
+  border: 2px solid #ff0000;
+  padding: 8px;
+  display: block;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.selected {
+  background-color: #ff0000;
+  color: white;
+}
+#feedback { margin-top: 20px; font-size: 18px; color: #ff0000; }
+
+.heart, .power-heart, .confetti-heart {
+  position: absolute;
+  clip-path: polygon(50% 0%,61% 13%,75% 15%,85% 25%,90% 40%,85% 55%,70% 70%,50% 85%,30% 70%,15% 55%,10% 40%,15% 25%,25% 15%,39% 13%);
+}
+.heart { width: 20px; height: 20px; background: red; animation: float 6s linear infinite; }
+@keyframes float { 0% { transform: translateY(100vh) translateX(0) rotate(0deg); opacity:1;} 100% { transform: translateY(-50vh) translateX(50px) rotate(360deg); opacity:0;} }
+.power-heart { width: 100px; height: 100px; background: pink; top:50%; left:50%; transform: translate(-50%,-50%) scale(0); z-index:10; animation: explode 0.6s forwards; }
+@keyframes explode {0%{transform:translate(-50%,-50%) scale(0);opacity:1;}50%{transform:translate(-50%,-50%) scale(1.5);opacity:1;}100%{transform:translate(-50%,-50%) scale(0);opacity:0;}}
+
+.confetti-heart {
+  width: 20px;
+  height: 20px;
+  background: pink;
+  animation: confetti 3s linear forwards;
+  z-index: 10;
+}
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity:1;}
+  100% { transform: translateY(600px) rotate(360deg); opacity:0;}
+}
+</style>
+</head>
+<body>
+
+<audio id="bg-music" loop autoplay>
+  <source src="https://cdn.pixabay.com/download/audio/2023/01/26/audio_c1f6fa7f28.mp3?filename=arcade-game-loop-122442.mp3" type="audio/mpeg">
+</audio>
+<audio id="win-sound">
+  <source src="https://cdn.pixabay.com/download/audio/2021/09/06/audio_8dc7a5e3b7.mp3?filename=video-game-win-sound-arcade-111918.mp3" type="audio/mpeg">
+</audio>
+
+<div id="start-screen" class="arcade-box">
+  <h1>Valentine Game</h1>
+  <h2>Made this for you ❤️</h2>
+  <button onclick="startGame()">Start</button>
+</div>
+
+<div id="quiz-screen" class="hidden arcade-box">
+  <div class="level-box" id="level-box">Nivel 1</div>
+  <h3>Responde correctamente a esta pregunta</h3>
+  <h2 id="question"></h2>
+  <div id="options"></div>
+  <div id="feedback"></div>
+</div>
+
+<div id="win-screen" class="hidden arcade-box">
+  <h1>You Win!! 🏆</h1>
+</div>
+
+<script>
+const startScreen = document.getElementById('start-screen');
+const quizScreen = document.getElementById('quiz-screen');
+const winScreen = document.getElementById('win-screen');
+const levelBox = document.getElementById('level-box');
+const questionEl = document.getElementById('question');
+const optionsEl = document.getElementById('options');
+const feedbackEl = document.getElementById('feedback');
+const bgMusic = document.getElementById('bg-music');
+const winSound = document.getElementById('win-sound');
+
+const questions = [
+  {q:"¿Quién roba el corazón de Anto?", options:["Ale","Eithan","Elías"], allCorrect:true, feedback:"¡Sabía que responderías bien! 😽"},
+  {q:"¿En dónde fue nuestro primer beso?", options:["En tu casa","En el parque","En una fiesta"], correctIndex:1, feedbackCorrect:"¡Tú me das +1000 de vida ❤️", feedbackWrong:"¡Inténtalo de nuevo 😾"},
+  {q:"¿Quieres ser mi San Valentín? ❤️", options:["Sí","No"], correctIndex:0, feedbackCorrect:"¡Sí! Me haces muy feliz ❤️", feedbackWrong:"¡Oh no! 😿 Inténtalo otra vez", hideWrongNext:true}
+];
+
+let currentQuestion = 0;
+let selectedIndex = 0;
+let lastAnswerCorrect = false;
+
+function startGame(){
+  startScreen.classList.add('hidden');
+  quizScreen.classList.remove('hidden');
+  winScreen.classList.add('hidden');
+  currentQuestion = 0;
+  showQuestion();
+  bgMusic.play();
+  createHearts();
+}
+
+function showQuestion(){
+  const q = questions[currentQuestion];
+  questionEl.textContent = q.q;
+  optionsEl.innerHTML = '';
+  feedbackEl.textContent = '';
+  lastAnswerCorrect = false;
+  selectedIndex = 0;
+  levelBox.textContent = `Nivel ${currentQuestion+1}`;
+  
+  q.options.forEach((opt,i)=>{
+    const div = document.createElement('div');
+    div.textContent = `→ ${opt}`;
+    div.classList.add('option');
+    if(i===0) div.classList.add('selected');
+    optionsEl.appendChild(div);
+  });
+}
+
+function checkAnswer(){
+  const q = questions[currentQuestion];
+  optionsEl.innerHTML = '';
+
+  if(q.allCorrect){
+    feedbackEl.textContent = q.feedback;
+    lastAnswerCorrect = true;
+    createPowerHeart();
+  } else {
+    if(selectedIndex === q.correctIndex){
+      feedbackEl.textContent = q.feedbackCorrect;
+      lastAnswerCorrect = true;
+      createPowerHeart();
+    } else {
+      feedbackEl.textContent = q.feedbackWrong;
+      lastAnswerCorrect = false;
+      if(q.hideWrongNext) q.options = ["Sí"];
+    }
+  }
+}
+
+document.addEventListener('keydown', (e)=>{
+  const optionsDivs = document.querySelectorAll('.option');
+  if(optionsDivs.length===0) return;
+  if(e.key==="ArrowDown"){ 
+    optionsDivs[selectedIndex].classList.remove('selected');
+    selectedIndex = (selectedIndex+1)%optionsDivs.length;
+    optionsDivs[selectedIndex].classList.add('selected');
+  }
+  if(e.key==="ArrowUp"){ 
+    optionsDivs[selectedIndex].classList.remove('selected');
+    selectedIndex = (selectedIndex-1+optionsDivs.length)%optionsDivs.length;
+    optionsDivs[selectedIndex].classList.add('selected');
+  }
+  if(e.key==="Enter"){ 
+    checkAnswer();
+  }
+});
+
+document.addEventListener('keypress', (e)=>{
+  if(e.key==="Enter" && lastAnswerCorrect){
+    currentQuestion++;
+    if(currentQuestion<questions.length){
+      showQuestion();
+    } else {
+      quizScreen.classList.add('hidden');
+      winScreen.classList.remove('hidden');
+      winSound.play();
+      createConfetti();
+      // Reinicia automáticamente después de 5 segundos
+      setTimeout(()=> startGame(), 5000);
+    }
+  } else if(e.key==="Enter" && !lastAnswerCorrect){
+    showQuestion();
+  }
+});
+
+function createHearts(){
+  for(let i=0;i<15;i++){
+    let heart = document.createElement('div');
+    heart.className='heart';
+    heart.style.left=Math.random()*window.innerWidth+'px';
+    heart.style.animationDuration=(4+Math.random()*4)+'s';
+    heart.style.width=(15+Math.random()*20)+'px';
+    heart.style.height=heart.style.width;
+    document.body.appendChild(heart);
+  }
+}
+
+function createPowerHeart(){
+  let heart = document.createElement('div');
+  heart.className='power-heart';
+  document.body.appendChild(heart);
+  setTimeout(()=>heart.remove(),600);
+}
+
+function createConfetti(){
+  for(let i=0;i<30;i++){
+    let c = document.createElement('div');
+    c.className='confetti-heart';
+    c.style.left=Math.random()*window.innerWidth+'px';
+    c.style.animationDuration=(2+Math.random()*2)+'s';
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),3000);
+  }
+}
+</script>
+</body>
+</html>
