@@ -1,0 +1,100 @@
+<script>
+
+const startScreen = document.getElementById('start-screen');
+const quizScreen = document.getElementById('quiz-screen');
+const questionEl = document.getElementById('question');
+const optionsEl = document.getElementById('options');
+const levelBox = document.getElementById('level-box');
+const music = document.getElementById("bg-music");
+
+const questions = [
+  {q:"¿QUIÉN ROBA EL CORAZÓN DE ANTO?", options:["ALE","EITHAN","ELÍAS"], correctIndex:0},
+  {q:"¿EN DÓNDE FUE NUESTRO PRIMER BESO?", options:["EN TU CASA","EN EL PARQUE","EN UNA FIESTA"], correctIndex:1},
+  {q:"¿QUIERES SER MI SAN VALENTÍN?", options:["SÍ","NO"], correctIndex:0}
+];
+
+let currentQuestion = 0;
+let selectedIndex = 0;
+
+function startGame(){
+  startScreen.classList.add('hidden');
+  quizScreen.classList.remove('hidden');
+  currentQuestion = 0;
+  showQuestion();
+  music.play();
+  createHearts();
+}
+
+function showQuestion(){
+  const q = questions[currentQuestion];
+  questionEl.textContent = q.q;
+  optionsEl.innerHTML = "";
+  levelBox.textContent = "NIVEL " + (currentQuestion+1);
+  selectedIndex = 0;
+
+  q.options.forEach((opt,i)=>{
+    const div = document.createElement("div");
+    div.classList.add("option");
+    div.textContent = String.fromCharCode(97+i) + ". " + opt;
+
+    if(i === 0){
+      div.classList.add("selected");
+    }
+
+    // 👉 Funciona con toque (tablet / mouse)
+    div.addEventListener("click", ()=>{
+      selectedIndex = i;
+      updateSelection();
+      nextQuestion();
+    });
+
+    optionsEl.appendChild(div);
+  });
+}
+
+function updateSelection(){
+  const options = document.querySelectorAll(".option");
+  options.forEach(opt => opt.classList.remove("selected"));
+  options[selectedIndex].classList.add("selected");
+}
+
+// 👉 Funciona con teclado físico
+document.addEventListener("keydown", (e)=>{
+  const options = document.querySelectorAll(".option");
+  if(options.length === 0) return;
+
+  if(e.key === "ArrowDown"){
+    selectedIndex = (selectedIndex + 1) % options.length;
+    updateSelection();
+  }
+
+  if(e.key === "ArrowUp"){
+    selectedIndex = (selectedIndex - 1 + options.length) % options.length;
+    updateSelection();
+  }
+
+  if(e.key === "Enter"){
+    nextQuestion();
+  }
+});
+
+function nextQuestion(){
+  currentQuestion++;
+  if(currentQuestion < questions.length){
+    showQuestion();
+  } else {
+    alert("YOU WIN ❤️");
+    location.reload();
+  }
+}
+
+function createHearts(){
+  for(let i=0;i<20;i++){
+    let heart = document.createElement("div");
+    heart.className="heart";
+    heart.style.left=Math.random()*window.innerWidth+"px";
+    document.body.appendChild(heart);
+  }
+}
+
+</script>
